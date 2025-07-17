@@ -26,5 +26,5 @@ sequenceDiagram
     else 조회 실패 (예:  DB 연결 오류)
         Repository--xService: 에러 반환 
         Service--xController: 예외 처리
-    end****
+    end
 ```
