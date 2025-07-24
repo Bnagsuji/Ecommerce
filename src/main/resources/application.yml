@@ -22,10 +22,22 @@ spring:
       hibernate.jdbc.time_zone: UTC
 
 ---
+
+springdoc:
+  swagger-ui:
+    path: /e-commerce.html
+  api-docs:
+    path: /api-docs
+  packages-to-scan: kr.hhplus.be.server.domain
+  group-configs:
+    - group: hhplus
+      paths-to-match: /api/**
+
+
 spring.config.activate.on-profile: local, test
 
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/hhplus?characterEncoding=UTF-8&serverTimezone=UTC
-    username: application
-    password: application
+    url: jdbc:mysql://localhost:3305/hhplus?characterEncoding=UTF-8&serverTimezone=UTC
+    username: root
+    password: 1234

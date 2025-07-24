@@ -1,0 +1,370 @@
+---
+openapi: 3.0.1
+info:
+  title: E-Commerce API 문서
+  description: MockAPI 데이터 연결 테스트
+  version: v1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Generated server url
+tags:
+  - name: 상품
+    description: 상품 관련 API
+  - name: 주문
+    description: 주문 관련 API
+  - name: 계좌
+    description: 계좌 관련 API
+  - name: 쿠폰
+    description: 쿠폰 관련 API
+paths:
+  "/api/orders":
+    post:
+      tags:
+        - 주문
+      summary: 주문 요청
+      description: 상품 목록과 수량, 선택 쿠폰을 포함해 주문을 처리 하는 API.
+      operationId: placeOrder
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/OrderRequest"
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/OrderResponse"
+  "/api/coupons/use":
+    post:
+      tags:
+        - 쿠폰
+      summary: 사용자 쿠폰 사용
+      description: 사용자 쿠폰 사용 하는 API
+      operationId: useCoupon
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/UseCouponRequest"
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/UseCouponResponse"
+  "/api/coupons/issue":
+    post:
+      tags:
+        - 쿠폰
+      summary: 쿠폰 발급
+      description: 쿠폰 발급 하는 API
+      operationId: issueCoupon
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/IssueCouponRequest"
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/IssueCouponResponse"
+  "/api/balance/deduct":
+    post:
+      tags:
+        - 계좌
+      summary: 잔액 차감
+      description: 잔액 차감 하는 API
+      operationId: deductBalance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AccountRequest"
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/AccountResponse"
+  "/api/balance/charge":
+    post:
+      tags:
+        - 계좌
+      summary: 잔액 충전
+      description: 잔액 충전 하는 API
+      operationId: chargeBalance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/AccountRequest"
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/AccountResponse"
+  "/api/product/{id}":
+    get:
+      tags:
+        - 상품
+      summary: 상품 상세 조회
+      description: 상품별 상세 정보 조회하는 API
+      operationId: getProductDetail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/ProductResponse"
+  "/api/product/top-selling":
+    get:
+      tags:
+        - 상품
+      summary: 3일간 판매량 순 상위 상품 조회
+      description: 최근 3일간 많이 팔린 순으로 상품 조회하는 API
+      operationId: getTopSellingProducts
+      responses:
+        '200':
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/ProductResponse"
+  "/api/coupons/registered":
+    get:
+      tags:
+        - 쿠폰
+      summary: 현재 등록 쿠폰 목록 조회
+      description: 현재 등록된 쿠폰 목록 조회 하는 API
+      operationId: getRegisteredCoupons
+      responses:
+        '200':
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/RegisteredCouponResponse"
+  "/api/coupons/owned/{memberId}":
+    get:
+      tags:
+        - 쿠폰
+      summary: 사용자 쿠폰 목록 조회
+      description: 사용자 쿠폰 목록 조회 하는 API
+      operationId: getOwnedCoupons
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/OwnedCouponResponse"
+  "/api/balance/{memberId}":
+    get:
+      tags:
+        - 계좌
+      summary: 현재 잔액 조회
+      description: 현재 잔액 정보 조회하는 API
+      operationId: getBalance
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/AccountResponse"
+  "/api/balance/{memberId}/history":
+    get:
+      tags:
+        - 계좌
+      summary: 계좌 히스토리
+      description: 계좌 히스토리 조회 API
+      operationId: getBalanceHistory
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            "*/*":
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/AccountHistoryResponse"
+components:
+  schemas:
+    OrderItem:
+      type: object
+      properties:
+        productId:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+          format: int32
+    OrderRequest:
+      type: object
+      properties:
+        memberId:
+          type: integer
+          format: int64
+        items:
+          type: array
+          items:
+            "$ref": "#/components/schemas/OrderItem"
+        couponId:
+          type: integer
+          format: int64
+    OrderResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+    UseCouponRequest:
+      type: object
+      properties:
+        memberId:
+          type: integer
+          format: int64
+        couponId:
+          type: integer
+          format: int64
+    UseCouponResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+    IssueCouponRequest:
+      type: object
+      properties:
+        memberId:
+          type: integer
+          format: int64
+        couponId:
+          type: integer
+          format: int64
+    IssueCouponResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+    AccountRequest:
+      type: object
+      properties:
+        memberId:
+          type: integer
+          format: int64
+        amount:
+          type: integer
+          format: int32
+    AccountResponse:
+      type: object
+      properties:
+        memberId:
+          type: integer
+          format: int64
+        balance:
+          type: integer
+          format: int32
+    ProductResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        stock:
+          type: integer
+          format: int32
+        price:
+          type: integer
+          format: int32
+        regDate:
+          type: string
+    RegisteredCouponResponse:
+      type: object
+      properties:
+        couponId:
+          type: integer
+          format: int64
+        couponName:
+          type: string
+        active:
+          type: boolean
+        remainingQuantity:
+          type: integer
+          format: int32
+    OwnedCouponResponse:
+      type: object
+      properties:
+        couponId:
+          type: integer
+          format: int64
+        couponName:
+          type: string
+        expired:
+          type: boolean
+    AccountHistoryResponse:
+      type: object
+      properties:
+        type:
+          type: string
+        amount:
+          type: integer
+          format: int32
+        dateTime:
+          type: string
+          format: date-time
