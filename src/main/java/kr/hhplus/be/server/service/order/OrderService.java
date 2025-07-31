@@ -13,26 +13,4 @@ import java.util.Map;
 
 public interface OrderService {
 
-    OrderResponse placeOrder(OrderRequest orderRequest);
-
-    List<ProductResponse> deductProductStock(List<OrderRequest.OrderItem> orderItems);
-
-    Map<Long, ProductResponse> mapProductResponses(List<ProductResponse> responses);
-
-    List<OrderItem> createOrderItems(List<OrderRequest.OrderItem> orderItems, Map<Long, ProductResponse> productMap);
-
-    long calculateTotalAmount(List<OrderItem> orderItems);
-
-    AccountResponse deductBalance(Long userId, long amount);
-
-    Order createOrder(OrderRequest request, long totalAmount, List<OrderItem> orderItems);
-
-    Order saveOrder(Order order);
-
-    void notifyExternalSystem(Order order);
-
-    OrderResponse buildOrderResponse(Order order);
-
-    Order saveOrderToMockStorage(Order order);
-
 }

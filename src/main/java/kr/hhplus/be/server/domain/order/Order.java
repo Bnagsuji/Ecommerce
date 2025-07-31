@@ -5,47 +5,52 @@ import kr.hhplus.be.server.controller.order.request.OrderRequest;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
-@Setter
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "orders")
 public class Order {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private Long userId;
+
     private Long totalAmount;
-    private LocalDateTime orderDate;
+
+    @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
-    @Transient
-    private List<OrderItem> orderItems;
+    private LocalDateTime orderDate;
+
+    // 단방향
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "order_id")
+    private List<OrderItem> orderItems = new ArrayList<>();
 
     @Builder
-    private Order(Long id, Long userId, Long totalAmount, LocalDateTime orderDate, OrderStatus status, List<OrderItem> orderItems) {
-        this.id = id;
+    private Order(Long userId, List<OrderItem> orderItems, OrderStatus status) {
         this.userId = userId;
-        this.totalAmount = totalAmount;
-        this.orderDate = orderDate;
         this.status = status;
-        this.orderItems = orderItems;
+        this.orderDate = LocalDateTime.now();
+        this.totalAmount = calculateTotalAmount(orderItems);
     }
 
-    public static Order create(OrderRequest orderRequest, long totalOrderAmount, List<OrderItem> newOrderItems) {
+    public static Order create(OrderRequest req, List<OrderItem> orderItems) {
         return Order.builder()
-                .userId(orderRequest.getUserId())
-                .totalAmount(totalOrderAmount)
-                .orderDate(LocalDateTime.now())
+                .userId(req.getUserId())
                 .status(OrderStatus.COMPLETED)
-                .orderItems(newOrderItems)
+                .orderItems(orderItems)
                 .build();
     }
 
-//    // 주문에 아이템 추가 헬퍼 메서드 (양방향 관계 설정 시 유용)
-//    public void addOrderItem(OrderItem orderItem) {
-//        orderItems.add(orderItem);
-//    }
+
+    public static long calculateTotalAmount(List<OrderItem> items) {
+        return items.stream()
+                .mapToLong(OrderItem::getTotalAmount)
+                .sum();
+    }
 }
