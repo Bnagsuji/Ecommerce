@@ -1,11 +1,9 @@
 package kr.hhplus.be.server.controller.product.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+public record ProductRequest(
+    Long id,
+    String name,
+    Integer stock,
+    Long price
+) {}
 
-@Data
-@AllArgsConstructor
-public class ProductRequest {
-    Long id;
-    int stock;
-}
