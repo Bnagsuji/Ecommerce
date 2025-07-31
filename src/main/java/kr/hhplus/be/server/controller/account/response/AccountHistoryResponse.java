@@ -8,5 +8,5 @@ public record AccountHistoryResponse(
         Long userId, // "CHARGE" or "USE"z
         Long amount,
         TransactionType type,
-        LocalDateTime dateTime
+        LocalDateTime createdDate
 ) {}
