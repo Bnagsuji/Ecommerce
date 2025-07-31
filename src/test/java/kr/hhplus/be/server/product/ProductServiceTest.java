@@ -2,7 +2,7 @@ package kr.hhplus.be.server.product;
 
 
 import kr.hhplus.be.server.controller.product.response.ProductResponse;
-import kr.hhplus.be.server.repository.product.ProductRepository;
+import kr.hhplus.be.server.infrastructure.repository.product.ProductJpaRepository;
 import kr.hhplus.be.server.service.product.impl.ProductServiceImpl;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ class ProductServiceTest {
     ProductServiceImpl mockProductServiceImpl;
 
     @Mock
-    ProductRepository productRepository;
+    ProductJpaRepository productRepository;
 
     @Test
     void 상품_상세_조회_성공_테스트() {
@@ -35,7 +35,7 @@ class ProductServiceTest {
         ProductResponse origin = new ProductResponse(
                 1L,
                 "맥북 M3",
-                2000000L,
+                2000000,
                 5,
                 fixedTime
         );
@@ -59,7 +59,7 @@ class ProductServiceTest {
         ProductResponse origin = new ProductResponse(
                 2L,
                 "맥북 M3",
-                2000000L,
+                2000000,
                 5,
                 LocalDateTime.now()
         );
@@ -76,9 +76,9 @@ class ProductServiceTest {
     void 상위_판매_상품_리스트_조회_성공_테스트() {
         // given
         List<ProductResponse> origin = List.of(
-                new ProductResponse(2L, "갤럭시 Z 플립", 2000000L, 5, LocalDateTime.now()),
-                new ProductResponse(1L, "맥북 M3", 1300000L, 3, LocalDateTime.now()),
-                new ProductResponse(3L, "아이패드 프로", 0L, 0, LocalDateTime.now())
+                new ProductResponse(2L, "갤럭시 Z 플립", 2000000, 5, LocalDateTime.now()),
+                new ProductResponse(1L, "맥북 M3", 1300000, 3, LocalDateTime.now()),
+                new ProductResponse(3L, "아이패드 프로", 0, 0, LocalDateTime.now())
         );
 
         // when
