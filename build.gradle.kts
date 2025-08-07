@@ -19,6 +19,18 @@ java {
 	}
 }
 
+
+val querydslDir = "src/main/generated"
+
+sourceSets {
+	main {
+		java.srcDirs("src/main/java", querydslDir)
+	}
+}
+
+
+
+
 repositories {
 	mavenCentral()
 }
@@ -29,11 +41,17 @@ dependencyManagement {
 	}
 }
 
+
+
 dependencies {
     // Spring
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-web")
+
+	// https://mvnrepository.com/artifact/org.mapstruct/mapstruct-processor
+	implementation("org.mapstruct:mapstruct-processor:1.4.2.Final")
+	implementation ("org.mapstruct:mapstruct:1.4.2.Final")
 
 	//swagger
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
@@ -42,6 +60,14 @@ dependencies {
 	annotationProcessor("org.projectlombok:lombok")
     // DB
 	runtimeOnly("com.mysql:mysql-connector-j")
+
+
+//	implementation("com.querydsl:querydsl-jpa:5.0.0")
+//	implementation("com.querydsl:querydsl-core")
+	implementation("com.querydsl:querydsl-jpa:5.0.0:jakarta")
+	annotationProcessor("com.querydsl:querydsl-apt:5.0.0:jakarta")
+	annotationProcessor("jakarta.annotation:jakarta.annotation-api")
+	annotationProcessor("jakarta.persistence:jakarta.persistence-api:3.1.0")
 
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -55,3 +81,8 @@ tasks.withType<Test> {
 	useJUnitPlatform()
 	systemProperty("user.timezone", "UTC")
 }
+
+tasks.withType<JavaCompile>().configureEach {
+	options.generatedSourceOutputDirectory.set(file("$buildDir/generated/java"))
+}
+

@@ -14,9 +14,9 @@ spring:
   jpa:
     open-in-view: false
     generate-ddl: false
-    show-sql: false
+    show-sql: true
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     properties:
       hibernate.timezone.default_storage: NORMALIZE_UTC
       hibernate.jdbc.time_zone: UTC
@@ -28,7 +28,7 @@ springdoc:
     path: /e-commerce.html
   api-docs:
     path: /api-docs
-  packages-to-scan: kr.hhplus.be.server.domain
+  packages-to-scan: kr.hhplus.be.server
   group-configs:
     - group: hhplus
       paths-to-match: /api/**
@@ -38,6 +38,11 @@ spring.config.activate.on-profile: local, test
 
 spring:
   datasource:
+    hikari:
+      maximum-pool-size: 30
+      minimum-idle: 10
+      idle-timeout: 30000
+      connection-timeout: 30000
     url: jdbc:mysql://localhost:3305/hhplus?characterEncoding=UTF-8&serverTimezone=UTC
     username: root
     password: 1234
