@@ -12,7 +12,7 @@ public class SwaggerConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("E-Commerce API 문서")
-                        .description("MockAPI 데이터 연결 테스트")
+                        .description("API 데이터 연결 테스트")
                         .version("v1.0.0")
                 );
     }

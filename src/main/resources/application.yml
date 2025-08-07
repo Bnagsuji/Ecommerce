@@ -14,9 +14,9 @@ spring:
   jpa:
     open-in-view: false
     generate-ddl: false
-    show-sql: false
+    show-sql: true
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     properties:
       hibernate.timezone.default_storage: NORMALIZE_UTC
       hibernate.jdbc.time_zone: UTC
@@ -28,7 +28,7 @@ springdoc:
     path: /e-commerce.html
   api-docs:
     path: /api-docs
-  packages-to-scan: kr.hhplus.be.server.domain
+  packages-to-scan: kr.hhplus.be.server
   group-configs:
     - group: hhplus
       paths-to-match: /api/**
