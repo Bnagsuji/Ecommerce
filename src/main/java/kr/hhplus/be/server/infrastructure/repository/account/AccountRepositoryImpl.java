@@ -18,4 +18,14 @@ public class AccountRepositoryImpl implements AccountRepository {
         return accountJpaRepository.findByUserId(userId);
     }
 
+    @Override
+    public Optional<Account> findByUserIdForUpdate(Long userId) {
+        return accountJpaRepository.findByUserIdForUpdate(userId);
+    }
+
+    @Override
+    public Account save(Account account) {
+        return accountJpaRepository.save(account);
+    }
+
 }

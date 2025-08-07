@@ -4,4 +4,6 @@ import java.util.Optional;
 
 public interface AccountRepository {
     Optional<Account> findByUserId(Long userId);
+    Optional<Account> findByUserIdForUpdate(Long userId);
+    Account save(Account account);
 }

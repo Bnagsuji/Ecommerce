@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@Builder
+@Builder(access = AccessLevel.PRIVATE)
 public class Account {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,11 +28,22 @@ public class Account {
         this.userId = userId; this.amount = amount;
     }
 
+
+    //새 계좌 생성
+    public static Account createNew(Long userId) {
+        return Account.builder()
+                .userId(userId)
+                .amount(0L)
+                .build();
+    }
+
+
+
     public static Account create(Long userId, Long amount) {
-        Account account = new Account();
-        account.userId = userId;
-        account.amount = amount;
-        return account;
+        return Account.builder()
+                .userId(userId)
+                .amount(amount)
+                .build();
     }
 
     public void charge(Long chargeAmount) {
@@ -47,17 +58,4 @@ public class Account {
     }
 
 
-    public AccountResponse toResponse() {
-        return new AccountResponse(userId, amount);
-    }
-
-
-    public AccountHistory toHistory(TransactionType type) {
-        return AccountHistory.builder()
-                .userId(this.userId)
-                .amount(this.amount)
-                .type(type)
-                .createdDate(LocalDateTime.now())
-                .build();
-    }
 }

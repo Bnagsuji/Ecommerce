@@ -1,9 +1,6 @@
 package kr.hhplus.be.server.domain.account;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import kr.hhplus.be.server.controller.account.request.TransactionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,7 +24,17 @@ public class AccountHistory {
 
     private Long amount;
 
+    @Enumerated(EnumType.STRING)
     private TransactionType type;
 
     private LocalDateTime createdDate;
+
+    public static AccountHistory create(Long userId, Long amount, TransactionType type, LocalDateTime now) {
+        return AccountHistory.builder()
+                .userId(userId)
+                .amount(amount)
+                .type(type)
+                .createdDate(LocalDateTime.now())
+                .build();
+    }
 }
