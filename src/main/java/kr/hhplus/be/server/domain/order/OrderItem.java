@@ -35,6 +35,9 @@ public class OrderItem {
         this.totalAmount = price * quantity;
     }
 
+    public OrderItem(Long productId, int quantity) {
+    }
+
 //    public static OrderItem of(ProductResponse product, int quantity) {
 //        return OrderItem.builder()
 //                .productName(product.name())
