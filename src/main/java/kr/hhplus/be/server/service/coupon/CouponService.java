@@ -18,4 +18,5 @@ public interface CouponService {
     int applyCoupon(Long userId, Long couponId);
 
     void rollback(Long userId, Long couponId);
+
 }

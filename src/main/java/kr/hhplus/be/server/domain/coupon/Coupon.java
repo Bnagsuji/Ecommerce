@@ -27,7 +27,7 @@ public class Coupon {
     private Integer discountAmount;
 
     @Builder
-    public Coupon(String name, LocalDateTime validFrom, LocalDateTime validTo, Integer quantity, Integer discountAmount) {
+    public Coupon( String name, LocalDateTime validFrom, LocalDateTime validTo, Integer quantity, Integer discountAmount) {
         this.name = name;
         this.validFrom = validFrom;
         this.validTo = validTo;
@@ -40,16 +40,29 @@ public class Coupon {
         return new Coupon(name, validFrom, validTo, quantity, discountAmount);
     }
 
+    //유효기간 체크
     public boolean isActive() {
         LocalDateTime now = LocalDateTime.now();
         return now.isAfter(validFrom) && now.isBefore(validTo);
     }
 
+
+    //쿠폰 재고 감소
     public void decreaseQuantity() {
         if (quantity > 0) this.quantity--;
     }
 
     public void increaseQuantity() {
         this.quantity++;
+    }
+
+
+
+    //테스트용
+    public void resetQuantity(int quantity) {
+        if (quantity < 0) {
+            throw new IllegalArgumentException("수량은 0 이상이어야 합니다.");
+        }
+        this.quantity = quantity;
     }
 }
