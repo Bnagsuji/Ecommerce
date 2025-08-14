@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Builder
 public class Coupon {
 
     @Id
@@ -24,16 +23,33 @@ public class Coupon {
 
     private LocalDateTime validTo;
 
-    public Coupon(Long id, String name, LocalDateTime validFrom, LocalDateTime validTo) {
-        this.id = id;
+    private Integer quantity; // 남은 수량
+    private Integer discountAmount;
+
+    @Builder
+    public Coupon(String name, LocalDateTime validFrom, LocalDateTime validTo, Integer quantity, Integer discountAmount) {
         this.name = name;
         this.validFrom = validFrom;
         this.validTo = validTo;
+        this.quantity = quantity;
+        this.discountAmount = discountAmount;
     }
 
+    // 정적 팩토리 메서드
+    public static Coupon create(String name, LocalDateTime validFrom, LocalDateTime validTo,Integer quantity, Integer discountAmount) {
+        return new Coupon(name, validFrom, validTo, quantity, discountAmount);
+    }
 
     public boolean isActive() {
         LocalDateTime now = LocalDateTime.now();
         return now.isAfter(validFrom) && now.isBefore(validTo);
+    }
+
+    public void decreaseQuantity() {
+        if (quantity > 0) this.quantity--;
+    }
+
+    public void increaseQuantity() {
+        this.quantity++;
     }
 }

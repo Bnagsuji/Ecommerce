@@ -38,7 +38,7 @@ class ProductControllerTest {
         ProductResponse mockResponse = new ProductResponse(
                 productId,
                 "Test Product",
-                5000L,
+                5000,
                 100,
                 LocalDateTime.now()
         );
@@ -58,8 +58,8 @@ class ProductControllerTest {
     void 판매량_상위_상품조회_성공() throws Exception {
         // given
         List<ProductResponse> mockList = List.of(
-                new ProductResponse(1L, "상품A", 1000L, 50, LocalDateTime.now()),
-                new ProductResponse(2L, "상품B", 2000L, 30, LocalDateTime.now())
+                new ProductResponse(1L, "상품A", 1000, 50, LocalDateTime.now()),
+                new ProductResponse(2L, "상품B", 2000, 30, LocalDateTime.now())
         );
 
         given(mockProductServiceImpl.getTopSellingProducts()).willReturn(mockList);

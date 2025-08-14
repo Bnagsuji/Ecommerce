@@ -1,10 +1,9 @@
 package kr.hhplus.be.server.domain.order;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+import kr.hhplus.be.server.controller.order.request.OrderRequest;
 import kr.hhplus.be.server.controller.order.response.OrderResponse;
+import kr.hhplus.be.server.controller.product.request.ProductStockRequest;
 import kr.hhplus.be.server.controller.product.response.ProductResponse;
 import lombok.*;
 
@@ -13,42 +12,58 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OrderItem {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String productName;
+
+    private Long productId;
+
     private Long price;
-    private int quantity;
+
+    private Integer quantity;
+
     private Long totalAmount;
 
+    @Column(name = "order_id")
+    private Long orderId;
+
     @Builder
-    private OrderItem(Long id, String productName, Long price, int quantity) {
-        this.id = id;
-        this.productName = productName;
+    private OrderItem(Long productId, Long price, Integer quantity) {
+        this.productId = productId;
         this.price = price;
         this.quantity = quantity;
-        calculateItemTotal();
+        this.totalAmount = price * quantity;
     }
 
-    public static OrderItem of(ProductResponse updatedProductResponse, int requestedQuantity) {
+//    public static OrderItem of(ProductResponse product, int quantity) {
+//        return OrderItem.builder()
+//                .productName(product.name())
+//                .price(product.price())
+//                .quantity(quantity)
+//                .build();
+//    }
+
+    public static OrderItem of(OrderRequest.OrderItem request, ProductResponse product) {
+        if (product.stock() < request.getQuantity()) {
+            throw new IllegalArgumentException("재고 부족: " + product.name());
+        }
+
         return OrderItem.builder()
-                .id(updatedProductResponse.id())
-                .productName(updatedProductResponse.name())
-                .price(updatedProductResponse.price())
-                .quantity(requestedQuantity)
+                .productId(product.id())
+                .price(product.price())
+                .quantity(request.getQuantity())
                 .build();
     }
 
-    private void calculateItemTotal() {
-        if (this.price != null) {
-            this.totalAmount = this.price * this.quantity;
-        } else {
-            this.totalAmount = 0L;
-        }
-    }
 
-    public OrderResponse.OrderItemResponse toResponse() {
-        return new OrderResponse.OrderItemResponse(id, productName, price, quantity, totalAmount);
-    }
+
+//    public OrderResponse.OrderItemResponse toResponse(Long productId) {
+//        return new OrderResponse.OrderItemResponse(
+//                productId,
+//                productName,
+//                price,
+//                quantity,
+//                totalAmount
+//        );
+//    }
 }

@@ -21,7 +21,7 @@ public class ExternalPlatformServiceImpl implements ExternalPlatformService {
 
     private void sendOrderToAnalyticsPlatform(Order order) {
         List<String> itemDetails = order.getOrderItems().stream()
-                .map(item -> item.getProductName() + " (수량: " + item.getQuantity() + ", 총액: " + item.getTotalAmount() + "원)")
+                .map(item -> item.getProductId() + " (수량: " + item.getQuantity() + ", 총액: " + item.getTotalAmount() + "원)")
                 .collect(Collectors.toList());
 
         System.out.println("  주문 ID: " + order.getId());
@@ -39,7 +39,7 @@ public class ExternalPlatformServiceImpl implements ExternalPlatformService {
                 order.getTotalAmount(),
                 order.getOrderDate().toLocalDate().toString(),
                 order.getOrderItems().stream()
-                        .map(item -> item.getProductName() + " (" + item.getQuantity() + "개)")
+                        .map(item -> item.getProductId() + " (" + item.getQuantity() + "개)")
                         .collect(Collectors.joining(", "))
         );
 

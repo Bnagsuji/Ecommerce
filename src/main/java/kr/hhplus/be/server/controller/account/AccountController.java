@@ -26,23 +26,21 @@ public class AccountController {
     }
 
 
-
-
     @PostMapping("/charge")
     @Operation(summary = "잔액 충전",description = "잔액 충전 하는 API")
     public AccountResponse chargeBalance(@RequestBody AccountRequest request) {
-        return accountService.chargeBalance(request.getUserId(), request.getAmount());
+        return accountService.chargeBalance(request.userId(), request.amount());
     }
 
     @PostMapping("/deduct")
     @Operation(summary = "잔액 차감",description = "잔액 차감 하는 API")
     public AccountResponse deductBalance(@RequestBody AccountRequest request) {
-        return accountService.useBalance(request.getUserId(), request.getAmount());
+        return accountService.useBalance(request.userId(), request.amount());
     }
 
-    @GetMapping("/{memberId}/history")
+    @GetMapping("/{userId}/history")
     @Operation(summary = "계좌 히스토리",description = "계좌 히스토리 조회 API")
-    public List<AccountHistoryResponse> getBalanceHistory(@PathVariable Long memberId) {
-        return accountService.getHistory(memberId);
+    public List<AccountHistoryResponse> getBalanceHistory(@PathVariable Long userId) {
+        return accountService.getHistory(userId);
     }
 }

@@ -1,18 +1,22 @@
 package kr.hhplus.be.server.service.product.impl;
 
+import com.querydsl.core.Tuple;
 import kr.hhplus.be.server.controller.product.request.ProductRequest;
+import kr.hhplus.be.server.controller.product.request.ProductStockRequest;
 import kr.hhplus.be.server.controller.product.response.ProductResponse;
-import kr.hhplus.be.server.repository.product.ProductRepository;
+import kr.hhplus.be.server.controller.product.response.TopSellingProductResponse;
+import kr.hhplus.be.server.domain.product.Product;
+import kr.hhplus.be.server.domain.product.ProductRepository;
+import kr.hhplus.be.server.infrastructure.repository.product.ProductJpaRepository;
 import kr.hhplus.be.server.service.product.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+
+import static java.util.stream.Collectors.toMap;
 
 
 @Service
@@ -22,76 +26,90 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
 
-    //상품 리스트
-    private final List<ProductResponse> mockProducts = new ArrayList<>(
-            List.of(
-                    new ProductResponse(1L, "맥북 M3", 2000000L, 5, LocalDateTime.now()),
-                    new ProductResponse(3L, "갤럭시 Z 플립", 130000L, 3, LocalDateTime.now()),
-                    new ProductResponse(4L, "아이패드 프로", 0L, 1, LocalDateTime.now())
-            )
-    ) ;
 
-    //상위 판매 상품 리스트 
-    private final List<ProductResponse> top3selling = List.of(
-            new ProductResponse(2L, "갤럭시 Z 플립", 2000000L, 5, LocalDateTime.now()),
-            new ProductResponse(1L, "맥북 M3", 1300000L, 3, LocalDateTime.now()),
-            new ProductResponse(3L, "아이패드 프로", 0L, 0, LocalDateTime.now())
-    );
+    /* 도메인 조회 */
 
-
-    /* 상품 상세 조회 */
     @Override
-    public ProductResponse getProductById(Long id) {
-
-        Optional<ProductResponse> product = mockProducts.stream()
-                .filter(p->p.id().equals(id))
-                .findFirst();
-
-        if(product.isEmpty()) throw new IllegalArgumentException("해당 상품이 존재하지 않습니다.");
-
-        return product.get();
+    public Product findById(Long id) {
+        return productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 상품이 존재하지 않습니다. id=" + id));
     }
 
     @Override
-    public List<ProductResponse> getProductByIdIn(List<Long> ids) {
-        return mockProducts;
-    }
-
-
-    /* 상위 판매 상품 리스트 조회 */
-    @Override
-    public List<ProductResponse> getTopSellingProducts() {
-        return top3selling;
-    }
-
-    @Override
-    public List<ProductResponse> useProduct(List<ProductRequest> reqs) {
-
-        // 요청된 productId 리스트 뽑기
+    public List<Product> findByIds(List<ProductRequest> reqs) {
         List<Long> ids = reqs.stream()
-                .map(ProductRequest::getId)
+                .map(ProductRequest::id)
                 .toList();
 
-        // mock 데이터에서 product 가져오기
-        List<ProductResponse> products = getProductByIdIn(ids);
-
-        // Map<productId, ProductResponse> 형태로 변환
-        Map<Long, ProductResponse> productMap = products.stream()
-                .collect(java.util.stream.Collectors.toMap(ProductResponse::id, java.util.function.Function.identity()));
-
-
-        for (ProductRequest req : reqs) {
-            ProductResponse product = productMap.get(req.getId());
-
-            if (product.stock() < req.getStock()) {
-                throw new IllegalArgumentException("재고가 부족합니다.");
-            }
-        }
-
-        // 여기선 재고 차감 없이 그냥 리스트 반환
-        return products;
+        return productRepository.findAllById(ids);
     }
 
+    /*  상품 단일 조회  */
+    @Override
+    @Transactional(readOnly = true)
+    public ProductResponse getProductById(Long id) {
+        Product product = findById(id);
+        return ProductResponse.from(product);
+    }
+
+    /* 상품 복수 조회 (필요 시 확장)  */
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getProductsById(List<Long> ids) {
+        List<Product> products = productRepository.findAllById(ids);
+        return products.stream()
+                .map(ProductResponse::from)
+                .toList();
+    }
+
+    /* 상위 판매 상품 조회 */
+
+    @Override
+    public List<ProductResponse> getTopSellingProducts() {
+        int days = 5;
+        int limit = 3;
+
+        List<Product> products = productRepository.findTopSellingList(days, limit);
+
+        return products.stream()
+                .map(ProductResponse::from)
+                .toList();
+    }
+
+    /* 주문 상품 처리 (재고 차감 포함) */
+
+    @Override
+    public List<ProductResponse> useProduct(List<ProductStockRequest> reqs) {
+        List<Product> products = getProductsByRequest(reqs);
+        deductProductStocks(products, reqs);
+        return toResponse(products);
+    }
+
+    /* 요청 정보 기준 도메인 조회 */
+    private List<Product> getProductsByRequest(List<ProductStockRequest> reqs) {
+        return reqs.stream()
+                .map(req -> productRepository.findById(req.id())
+                        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품 ID: " + req.id())))
+                .toList();
+    }
+
+    /* 재고 차감 */
+    private void deductProductStocks(List<Product> products, List<ProductStockRequest> reqs) {
+        Map<Long, Integer> reqMap = reqs.stream()
+                .collect(toMap(ProductStockRequest::id, ProductStockRequest::quantity));
+
+        products.forEach(product -> {
+            int quantity = reqMap.get(product.getId());
+            product.deductStock(quantity);
+        });
+    }
+
+    /* 응답 변환 */
+    private List<ProductResponse> toResponse(List<Product> products) {
+        return products.stream()
+                .map(ProductResponse::from)
+                .toList();
+    }
 
 
 

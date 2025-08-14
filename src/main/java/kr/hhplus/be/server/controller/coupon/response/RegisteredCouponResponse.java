@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.controller.coupon.response;
 
+import kr.hhplus.be.server.domain.coupon.Coupon;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -10,4 +11,13 @@ public class RegisteredCouponResponse {
     private String couponName;
     private boolean active;
     private int remainingQuantity;
+
+    public static RegisteredCouponResponse from(Coupon coupon, int remainingQuantity) {
+        return new RegisteredCouponResponse(
+                coupon.getId(),
+                coupon.getName(),
+                coupon.isActive(),
+                remainingQuantity
+        );
+    }
 }

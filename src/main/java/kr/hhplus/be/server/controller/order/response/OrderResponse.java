@@ -1,10 +1,7 @@
 package kr.hhplus.be.server.controller.order.response;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import kr.hhplus.be.server.domain.order.Order;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
 
 import java.util.List;
 
@@ -14,27 +11,41 @@ public record OrderResponse(
         Long userId,
         Long totalAmount,
         String orderDate,
-        String status, // 주문 상태 (예: "COMPLETED", "CANCELLED")
-        List<OrderItemResponse> orderedItems // 주문된 각 상품 항목의 상세 목록
+        String status,
+        List<OrderItemResponse> orderedItems
 ) {
 
-
     public record OrderItemResponse(
+            Long itemId,
             Long productId,
-            String productName,
             Long price,
             int quantity,
-            Long itemTotalAmount //총 금액 (가격 * 수량)
+            Long itemTotalAmount
     ) {}
 
-    public static OrderResponse of(Order savedOrder, List<OrderItemResponse> orderItemResponses) {
+
+    public static OrderResponse of(Order order, List<OrderItemResponse> items) {
         return OrderResponse.builder()
-                .orderId(savedOrder.getId())
-                .userId(savedOrder.getUserId())
-                .totalAmount(savedOrder.getTotalAmount())
-                .orderDate(savedOrder.getOrderDate().toString())
-                .status(savedOrder.getStatus().name())
-                .orderedItems(orderItemResponses)
+                .orderId(order.getId())
+                .userId(order.getUserId())
+                .totalAmount(order.getTotalAmount())
+                .orderDate(order.getOrderDate().toString())
+                .status(order.getStatus().name())
+                .orderedItems(items)
                 .build();
+    }
+
+    public static OrderResponse from(Order order) {
+        List<OrderItemResponse> items = order.getOrderItems().stream()
+                .map(item -> new OrderItemResponse(
+                        item.getId(),
+                        item.getProductId(),
+                        item.getPrice(),
+                        item.getQuantity(),
+                        item.getTotalAmount()
+                ))
+                .toList();
+
+        return of(order, items);
     }
 }
