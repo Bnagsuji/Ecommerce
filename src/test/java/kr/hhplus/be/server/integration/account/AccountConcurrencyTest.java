@@ -1,25 +1,20 @@
 
 package kr.hhplus.be.server.integration.account;
 
-import kr.hhplus.be.server.controller.account.request.AccountRequest;
-import kr.hhplus.be.server.controller.account.response.AccountResponse;
 import kr.hhplus.be.server.domain.account.Account;
 import kr.hhplus.be.server.infrastructure.repository.account.AccountJpaRepository;
 import kr.hhplus.be.server.service.account.AccountService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 public class AccountConcurrencyTest {
@@ -29,6 +24,9 @@ public class AccountConcurrencyTest {
 
     @Autowired
     private AccountJpaRepository accountJpaRepository;
+
+    @Autowired
+    RedissonClient redissonClient;
 
     private final Long userId = 999L;
     private final Long otherUserId = 888L;
@@ -40,6 +38,28 @@ public class AccountConcurrencyTest {
         accountJpaRepository.save(Account.create(userId, initialAmount));
         accountJpaRepository.save(Account.create(otherUserId, initialAmount));
     }
+
+    @Test
+    void 락_직접_확인() {
+        String key = "lock:account:" + userId;
+        RLock lock = redissonClient.getLock(key);
+
+        System.out.println("락 보유 중? = " + lock.isLocked());
+    }
+
+    @Test
+    void 분산락이_정상적으로_적용되는지_확인() throws InterruptedException {
+        String lockKey = "lock:account:" + userId;
+        RLock lock = redissonClient.getLock(lockKey);
+
+        System.out.println("락 보유 중? = " + lock.isLocked());  // 테스트 중엔 true여야 함
+
+        runConcurrentTest(() -> accountService.useBalance(userId, 1000L), 10);
+
+        Thread.sleep(200); // 워치독 반영 시간
+        System.out.println("락 해제됨? = " + lock.isLocked());  // 테스트 끝나면 false여야 함
+    }
+
 
     @Test
     void 동시에_10번_차감_테스트() throws InterruptedException {
@@ -155,7 +175,6 @@ public class AccountConcurrencyTest {
 
         latch.await();
 
-        // 죽지 않고 끝나면 성공
         Assertions.assertThat(true).isTrue();
     }
 
