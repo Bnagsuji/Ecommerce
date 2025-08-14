@@ -41,14 +41,21 @@ dependencyManagement {
 	}
 }
 
-
+var tc="1.20.4";
 
 dependencies {
     // Spring
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-web")
+// https://mvnrepository.com/artifact/org.springframework.data/spring-data-redis
+	implementation("org.springframework.data:spring-data-redis:3.4.0")
+// https://mvnrepository.com/artifact/org.redisson/redisson-spring-boot-starter
+	implementation("org.redisson:redisson-spring-boot-starter:3.41.0")
 
+	//래디스 캐시
+	implementation("org.springframework.boot:spring-boot-starter-cache")
+	implementation ("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 	// https://mvnrepository.com/artifact/org.mapstruct/mapstruct-processor
 	implementation("org.mapstruct:mapstruct-processor:1.4.2.Final")
 	implementation ("org.mapstruct:mapstruct:1.4.2.Final")
@@ -62,17 +69,19 @@ dependencies {
 	runtimeOnly("com.mysql:mysql-connector-j")
 
 
-//	implementation("com.querydsl:querydsl-jpa:5.0.0")
-//	implementation("com.querydsl:querydsl-core")
+
 	implementation("com.querydsl:querydsl-jpa:5.0.0:jakarta")
 	annotationProcessor("com.querydsl:querydsl-apt:5.0.0:jakarta")
 	annotationProcessor("jakarta.annotation:jakarta.annotation-api")
 	annotationProcessor("jakarta.persistence:jakarta.persistence-api:3.1.0")
 
+
     // Test
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
-	testImplementation("org.testcontainers:junit-jupiter")
+// https://mvnrepository.com/artifact/org.testcontainers/testcontainers
+	testImplementation("org.testcontainers:testcontainers:1.19.8")
+	testImplementation("org.testcontainers:junit-jupiter:$tc")
 	testImplementation("org.testcontainers:mysql")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -83,6 +92,6 @@ tasks.withType<Test> {
 }
 
 tasks.withType<JavaCompile>().configureEach {
-	options.generatedSourceOutputDirectory.set(file("$buildDir/generated/java"))
+	options.generatedSourceOutputDirectory.set(file("/generated/java"))
 }
 
