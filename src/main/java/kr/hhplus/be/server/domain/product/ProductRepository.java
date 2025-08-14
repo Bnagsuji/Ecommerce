@@ -10,6 +10,6 @@ public interface ProductRepository {
     Optional<Product> findById(Long id);
     List<Product> findAllById(List<Long> ids);
     List<Product> findTopSellingList(int days, int limit);
-    Optional<Product> findByIdForUpdate(Long id);
+//    Optional<Product> findByIdForUpdate(Long id);
 
 }

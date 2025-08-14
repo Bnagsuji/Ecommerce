@@ -1,19 +1,19 @@
 package kr.hhplus.be.server.service.product.impl;
 
-import com.querydsl.core.Tuple;
 import kr.hhplus.be.server.controller.product.request.ProductRequest;
 import kr.hhplus.be.server.controller.product.request.ProductStockRequest;
 import kr.hhplus.be.server.controller.product.response.ProductResponse;
-import kr.hhplus.be.server.controller.product.response.TopSellingProductResponse;
 import kr.hhplus.be.server.domain.product.Product;
 import kr.hhplus.be.server.domain.product.ProductRepository;
 import kr.hhplus.be.server.infrastructure.repository.product.ProductJpaRepository;
+import kr.hhplus.be.server.lock.DistributedLock;
 import kr.hhplus.be.server.service.product.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +26,9 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final ProductJpaRepository productJpaRepository;
+    //레디스
+    private final RedissonClient redissonClient;
+
 
     /* 도메인 조회 */
 
@@ -62,6 +65,11 @@ public class ProductServiceImpl implements ProductService {
 
     /* 상위 판매 상품 조회 */
 
+//    @Cacheable(
+//            cacheNames = RedisCacheName.TOP_SELLING_V2,
+//            key = "'d5:L3'",
+//            sync = true // 스탬피드 방지. sync=true일 땐 unless 사용 금지!
+//    )
     @Override
     public List<ProductResponse> getTopSellingProducts() {
         int days = 5;
@@ -76,6 +84,15 @@ public class ProductServiceImpl implements ProductService {
 
     /* 주문 상품 처리 (재고 차감 포함) */
     @Override
+    @DistributedLock(
+            keys = { "#reqs.![ 'product:' + id ]" },  // SpEL 배열 → 멀티락
+            lease = 5,
+            unit = ChronoUnit.SECONDS,
+            waitFor = 2,
+            waitUnit = ChronoUnit.SECONDS,
+            pollMillis = 50,
+            prefix = "lock:" // <- 통일을 위해 추가 (멀티락 시에도 붙는 prefix)
+    )
     @Transactional
     public List<ProductResponse> useProduct(List<ProductStockRequest> reqs) {
         List<Product> products = getProductsByRequest(reqs);
@@ -85,10 +102,48 @@ public class ProductServiceImpl implements ProductService {
         return toResponse(products);
     }
 
+//    public List<ProductResponse> useProduct(List<ProductStockRequest> reqs) {
+//        // 1) 교착 방지: 잠글 대상 확정 (중복 제거 + 정렬)
+//        List<Long> ids = reqs.stream().map(ProductStockRequest::id).distinct().sorted().toList();
+//        if (ids.isEmpty()) return List.of();
+//
+//        // 2) 상품별 락 키 → 멀티락 구성
+//        List<RLock> locks = ids.stream()
+//                .map(id -> redissonClient.getLock("lock:product:" + id))
+//                .toList();
+//        RedissonMultiLock multiLock = new RedissonMultiLock(locks.toArray(new RLock[0]));
+//
+//        try {
+//            // 3) 분산락 획득 (wait=2s, lease=0: 워치독 자동 연장)
+//            boolean acquired = multiLock.tryLock(2, 0, TimeUnit.SECONDS);
+//            if (!acquired) throw new IllegalStateException("LOCK_TIMEOUT: " + ids);
+//
+//            // 4) 커밋/롤백 '이후'에 락 해제 (finally에서 언락 금지)
+//            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+//                @Override public void afterCompletion(int status) {
+//                    if (multiLock.isHeldByCurrentThread()) {
+//                        try { multiLock.unlock(); } catch (Exception ignored) {}
+//                    }
+//                }
+//            });
+//
+//            // 5) 기존 트랜잭션 로직 그대로 (안쪽은 JPA 비관적락으로 레코드 보호)
+//            List<Product> products = getProductsByRequest(reqs); // findByIdForUpdate 사용
+//            deductProductStocks(products, reqs);
+//            productJpaRepository.flush();
+//            return toResponse(products);
+//
+//        } catch (InterruptedException ie) {
+//            Thread.currentThread().interrupt();
+//            throw new IllegalStateException("LOCK_INTERRUPTED", ie);
+//        }
+//        // finally 블록 없음: 언락은 afterCompletion에서 처리
+//    }
+
     /* 요청 정보 기준 도메인 조회 */
     private List<Product> getProductsByRequest(List<ProductStockRequest> reqs) {
         return reqs.stream()
-                .map(req -> productRepository.findByIdForUpdate(req.id())
+                .map(req -> productRepository.findById(req.id())
                         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품 ID: " + req.id())))
                 .toList();
     }
