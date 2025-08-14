@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.service.product.impl;
 
+import kr.hhplus.be.server.config.cache.RedisCacheName;
 import kr.hhplus.be.server.controller.product.request.ProductRequest;
 import kr.hhplus.be.server.controller.product.request.ProductStockRequest;
 import kr.hhplus.be.server.controller.product.response.ProductResponse;
@@ -10,6 +11,7 @@ import kr.hhplus.be.server.lock.DistributedLock;
 import kr.hhplus.be.server.service.product.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RedissonClient;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,11 +67,11 @@ public class ProductServiceImpl implements ProductService {
 
     /* 상위 판매 상품 조회 */
 
-//    @Cacheable(
-//            cacheNames = RedisCacheName.TOP_SELLING_V2,
-//            key = "'d5:L3'",
-//            sync = true // 스탬피드 방지. sync=true일 땐 unless 사용 금지!
-//    )
+    @Cacheable(
+            cacheNames = RedisCacheName.TOP_SELLING_V2,
+            key = "'d5:L3'",
+            sync = true // 스탬피드 방지. sync=true일 땐 unless 사용 금지!
+    )
     @Override
     public List<ProductResponse> getTopSellingProducts() {
         int days = 5;
