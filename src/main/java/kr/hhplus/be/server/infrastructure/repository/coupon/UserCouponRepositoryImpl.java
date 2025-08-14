@@ -18,7 +18,7 @@ import java.util.function.Function;
 @RequiredArgsConstructor
 public class UserCouponRepositoryImpl implements UserCouponRepository {
 
-    private UserCouponJpaRepository userCouponJpaRepository;
+    private final UserCouponJpaRepository userCouponJpaRepository;
 
     @Override
     public Optional<UserCoupon> findByUserIdAndCouponIdWithLock(Long userId, Long couponId) {
@@ -40,5 +40,10 @@ public class UserCouponRepositoryImpl implements UserCouponRepository {
     @Override
     public UserCoupon save(UserCoupon userCoupon) {
         return userCouponJpaRepository.save(userCoupon);
+    }
+
+    @Override
+    public void deleteAll() {
+        userCouponJpaRepository.deleteAll();
     }
 }

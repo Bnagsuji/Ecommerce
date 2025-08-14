@@ -7,7 +7,7 @@ spring:
     name: HangHaePlusDataSource
     type: com.zaxxer.hikari.HikariDataSource
     hikari:
-      maximum-pool-size: 3
+      maximum-pool-size: 50
       connection-timeout: 10000
       max-lifetime: 60000
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -46,3 +46,32 @@ spring:
     url: jdbc:mysql://localhost:3305/hhplus?characterEncoding=UTF-8&serverTimezone=UTC
     username: root
     password: 1234
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  redisson:
+    config: |
+      singleServerConfig:
+        address: "redis://${spring.data.redis.host}:${spring.data.redis.port}"
+      threads: 4
+      nettyThreads: 8
+      lockWatchdogTimeout: 30000
+      codec: !<org.redisson.codec.JsonJacksonCodec> {}    
+logging:
+  level:
+    org.springframework.cache: TRACE
+
+
+  # === Redisson 설정 추가 ===
+#  redisson:
+#    # Testcontainers가 주입한 host/port로 연결
+#    address: "redis://${spring.data.redis.host}:${spring.data.redis.port}"
+#    threads: 4
+#    nettyThreads: 8
+#    lockWatchdogTimeout: 30000   # 자동 락 해제 시간(ms)
+#    codec: org.redisson.codec.JsonJacksonCodec
+#
+#

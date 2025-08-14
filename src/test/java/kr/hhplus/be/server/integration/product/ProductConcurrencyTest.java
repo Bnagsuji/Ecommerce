@@ -21,6 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 public class ProductConcurrencyTest {
 
+    //레디스 분산락 동시성 테스트 완료
+
     @Autowired
     private ProductRepository productRepository;
 

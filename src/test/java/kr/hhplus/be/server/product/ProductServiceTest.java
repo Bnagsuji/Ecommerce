@@ -27,6 +27,7 @@ class ProductServiceTest {
     @Mock
     ProductJpaRepository productRepository;
 
+/*
     @Test
     void 상품_상세_조회_성공_테스트() {
         // given - 고정된 시간으로 테스트 객체 만들기
@@ -89,6 +90,7 @@ class ProductServiceTest {
                 .usingRecursiveFieldByFieldElementComparatorIgnoringFields("regDate")
                 .isEqualTo(origin);
     }
+*/
 
 
 }

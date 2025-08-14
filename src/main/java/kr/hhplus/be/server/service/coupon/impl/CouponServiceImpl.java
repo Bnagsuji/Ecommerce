@@ -6,12 +6,14 @@ import kr.hhplus.be.server.domain.coupon.Coupon;
 import kr.hhplus.be.server.domain.coupon.UserCoupon;
 import kr.hhplus.be.server.infrastructure.repository.coupon.CouponJpaRepository;
 import kr.hhplus.be.server.infrastructure.repository.coupon.UserCouponJpaRepository;
+import kr.hhplus.be.server.lock.DistributedLock;
 import kr.hhplus.be.server.service.coupon.CouponService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
@@ -22,9 +24,21 @@ public class CouponServiceImpl implements CouponService {
     private final UserCouponJpaRepository userCouponRepository;
 
     @Override
+    @DistributedLock(
+            keys = {
+                    "'user:' + #userId",
+                    "'coupon:' + #couponId"
+            },
+            prefix = "lock:",
+            lease = 5,
+            unit = ChronoUnit.SECONDS,
+            waitFor = 2,
+            waitUnit = ChronoUnit.SECONDS,
+            pollMillis = 100
+    )
     @Transactional
     public boolean issueCoupon(Long userId, Long couponId) {
-        Coupon coupon = couponRepository.findByIdWithPessimisticLock(couponId)
+        Coupon coupon = couponRepository.findById(couponId)
                 .filter(Coupon::isActive)
                 .orElse(null);
         if (coupon == null || coupon.getQuantity() <= 0) return false;
@@ -64,6 +78,15 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @DistributedLock(
+            prefix = "lock:coupon",
+            keys = { "#userId + ':' + #couponId" },
+            lease = 5,
+            unit = ChronoUnit.SECONDS,
+            waitFor = 2,
+            waitUnit = ChronoUnit.SECONDS,
+            pollMillis = 100
+    )
     @Transactional
     public boolean useCoupon(Long userId, Long couponId) {
         Optional<UserCoupon> optional = userCouponRepository.findByUserIdAndCouponIdWithLock(userId, couponId);
@@ -86,6 +109,15 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @DistributedLock(
+            prefix = "lock:coupon",
+            keys = { "#userId + ':' + #couponId" },
+            lease = 5,
+            unit = ChronoUnit.SECONDS,
+            waitFor = 2,
+            waitUnit = ChronoUnit.SECONDS,
+            pollMillis = 100
+    )
     @Transactional
     public void rollback(Long userId, Long couponId) {
         userCouponRepository.findByUserIdAndCouponIdWithLock(userId, couponId)
