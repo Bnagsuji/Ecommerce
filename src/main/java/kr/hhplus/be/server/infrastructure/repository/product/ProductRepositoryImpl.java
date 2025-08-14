@@ -24,6 +24,11 @@ public class ProductRepositoryImpl implements ProductRepository {
     private final ProductJpaRepository productJpaRepository;
 
     @Override
+    public Product save(Product product) {
+        return productJpaRepository.save(product);
+    }
+
+    @Override
     public Optional<Product> findById(Long id) {
         return productJpaRepository.findById(id);
     }
@@ -51,6 +56,11 @@ public class ProductRepositoryImpl implements ProductRepository {
                 .orderBy(orderItem.quantity.sum().desc())
                 .limit(limit)
                 .fetch();
+    }
+
+    @Override
+    public Optional<Product> findByIdForUpdate(Long id) {
+        return productJpaRepository.findByIdForUpdate(id);
     }
 
 }

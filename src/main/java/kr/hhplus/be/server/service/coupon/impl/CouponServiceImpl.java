@@ -8,7 +8,9 @@ import kr.hhplus.be.server.infrastructure.repository.coupon.CouponJpaRepository;
 import kr.hhplus.be.server.infrastructure.repository.coupon.UserCouponJpaRepository;
 import kr.hhplus.be.server.service.coupon.CouponService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
@@ -20,25 +22,29 @@ public class CouponServiceImpl implements CouponService {
     private final UserCouponJpaRepository userCouponRepository;
 
     @Override
+    @Transactional
     public boolean issueCoupon(Long userId, Long couponId) {
-        Coupon coupon = couponRepository.findById(couponId)
+        Coupon coupon = couponRepository.findByIdWithPessimisticLock(couponId)
                 .filter(Coupon::isActive)
                 .orElse(null);
-        if (coupon == null) return false;
+        if (coupon == null || coupon.getQuantity() <= 0) return false;
 
-        // 이미 보유 여부 체크
-        if (userCouponRepository.existsByUserIdAndCoupon_Id(userId, couponId)) return false;
+        // 락을 건 후 직접 조회해서 존재 여부 확인
+        Optional<UserCoupon> existing = userCouponRepository.findByUserIdAndCouponIdWithLock(userId, couponId);
+        if (existing.isPresent()) return false;
 
-        if (coupon.getQuantity() <= 0) return false;
-
-        coupon.decreaseQuantity(); // 재고 차감
+        coupon.decreaseQuantity();
         couponRepository.save(coupon);
 
-        UserCoupon userCoupon = UserCoupon.builder()
-                .userId(userId)
-                .coupon(coupon)
-                .build();
-        userCouponRepository.save(userCoupon);
+        try {
+            userCouponRepository.save(UserCoupon.builder()
+                    .userId(userId)
+                    .coupon(coupon)
+                    .build());
+        } catch (DataIntegrityViolationException e) {
+            rollback(userId, couponId);
+            return false;
+        }
 
         return true;
     }
@@ -58,8 +64,9 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @Transactional
     public boolean useCoupon(Long userId, Long couponId) {
-        Optional<UserCoupon> optional = userCouponRepository.findByUserIdAndCoupon_Id(userId, couponId);
+        Optional<UserCoupon> optional = userCouponRepository.findByUserIdAndCouponIdWithLock(userId, couponId);
         if (optional.isEmpty()) return false;
 
         UserCoupon userCoupon = optional.get();
@@ -72,17 +79,23 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     public int applyCoupon(Long userId, Long couponId) {
-        return couponRepository.findById(couponId)
-                .map(Coupon::getDiscountAmount)
+        return userCouponRepository.findByUserIdAndCoupon_Id(userId, couponId)
+                .filter(uc -> !uc.isUsed() && uc.getCoupon().isActive())
+                .map(uc -> uc.getCoupon().getDiscountAmount())
                 .orElse(0);
     }
 
     @Override
+    @Transactional
     public void rollback(Long userId, Long couponId) {
-        userCouponRepository.findByUserIdAndCoupon_Id(userId, couponId)
-                .ifPresent(userCoupon -> {
-                    userCoupon.rollback();
-                    userCouponRepository.save(userCoupon);
+        userCouponRepository.findByUserIdAndCouponIdWithLock(userId, couponId)
+                .ifPresent(uc -> {
+                    uc.rollback();
+                    userCouponRepository.save(uc);
+
+                    Coupon coupon = uc.getCoupon();
+                    coupon.increaseQuantity();
+                    couponRepository.save(coupon);
                 });
     }
 }

@@ -37,8 +37,20 @@ public class Product {
         this.regDate = regDate;
     }
 
+    public Product(String name, int stock, long price) {
+        this.name = name;
+        this.stock = stock;
+        this.price = price;
+        this.regDate = LocalDateTime.now(); // 혹은 null
+    }
+
     public void deductStock(int quantity) {
         this.stock -= quantity;
+    }
+
+    // 테스트용 재고 설정
+    public void testResetStock(int stock) {
+        this.stock = stock;
     }
 
 

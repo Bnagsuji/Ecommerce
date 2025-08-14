@@ -11,6 +11,7 @@ import kr.hhplus.be.server.infrastructure.repository.product.ProductJpaRepositor
 import kr.hhplus.be.server.service.product.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -21,11 +22,10 @@ import static java.util.stream.Collectors.toMap;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
-
+    private final ProductJpaRepository productJpaRepository;
 
     /* 도메인 조회 */
 
@@ -46,7 +46,6 @@ public class ProductServiceImpl implements ProductService {
 
     /*  상품 단일 조회  */
     @Override
-    @Transactional(readOnly = true)
     public ProductResponse getProductById(Long id) {
         Product product = findById(id);
         return ProductResponse.from(product);
@@ -54,7 +53,6 @@ public class ProductServiceImpl implements ProductService {
 
     /* 상품 복수 조회 (필요 시 확장)  */
     @Override
-    @Transactional(readOnly = true)
     public List<ProductResponse> getProductsById(List<Long> ids) {
         List<Product> products = productRepository.findAllById(ids);
         return products.stream()
@@ -77,18 +75,20 @@ public class ProductServiceImpl implements ProductService {
     }
 
     /* 주문 상품 처리 (재고 차감 포함) */
-
     @Override
+    @Transactional
     public List<ProductResponse> useProduct(List<ProductStockRequest> reqs) {
         List<Product> products = getProductsByRequest(reqs);
         deductProductStocks(products, reqs);
+
+        productJpaRepository.flush(); //추가 ; db즉시 반영
         return toResponse(products);
     }
 
     /* 요청 정보 기준 도메인 조회 */
     private List<Product> getProductsByRequest(List<ProductStockRequest> reqs) {
         return reqs.stream()
-                .map(req -> productRepository.findById(req.id())
+                .map(req -> productRepository.findByIdForUpdate(req.id())
                         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품 ID: " + req.id())))
                 .toList();
     }
@@ -100,6 +100,11 @@ public class ProductServiceImpl implements ProductService {
 
         products.forEach(product -> {
             int quantity = reqMap.get(product.getId());
+
+            // 수량 초과하면 예외 던짐 (동시성 테스트 성공 조건에 맞게)
+            if (product.getStock() < quantity) {
+                throw new IllegalStateException("재고 부족: id=" + product.getId());
+            }
             product.deductStock(quantity);
         });
     }

@@ -38,6 +38,11 @@ spring.config.activate.on-profile: local, test
 
 spring:
   datasource:
+    hikari:
+      maximum-pool-size: 30
+      minimum-idle: 10
+      idle-timeout: 30000
+      connection-timeout: 30000
     url: jdbc:mysql://localhost:3305/hhplus?characterEncoding=UTF-8&serverTimezone=UTC
     username: root
     password: 1234

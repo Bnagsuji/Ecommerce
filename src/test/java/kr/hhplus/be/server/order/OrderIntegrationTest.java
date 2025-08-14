@@ -5,8 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.hhplus.be.server.controller.order.request.OrderRequest;
 import kr.hhplus.be.server.controller.order.request.OrderRequest.OrderItem;
 import kr.hhplus.be.server.domain.account.Account;
+import kr.hhplus.be.server.domain.coupon.Coupon;
+import kr.hhplus.be.server.domain.coupon.UserCoupon;
 import kr.hhplus.be.server.domain.product.Product;
 import kr.hhplus.be.server.infrastructure.repository.account.AccountJpaRepository;
+import kr.hhplus.be.server.infrastructure.repository.coupon.CouponJpaRepository;
+import kr.hhplus.be.server.infrastructure.repository.coupon.UserCouponJpaRepository;
 import kr.hhplus.be.server.infrastructure.repository.product.ProductJpaRepository;
 import kr.hhplus.be.server.infrastructure.repository.order.OrderJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +49,11 @@ class OrderIntegrationTest {
     @Autowired
     private OrderJpaRepository orderRepo;
 
+    @Autowired
+    private CouponJpaRepository couponRepository;
+    @Autowired private
+    UserCouponJpaRepository userCouponRepository;
+
     private Long userId;
 
     @BeforeEach
@@ -56,18 +65,37 @@ class OrderIntegrationTest {
         productRepo.save(product);
 
 
+        // 쿠폰 생성 (할인 50,000원)
+        Coupon coupon = Coupon.create(
+                "할인쿠폰",
+                LocalDateTime.now().minusDays(1),
+                LocalDateTime.now().plusDays(1),
+                1,
+                50_000
+        );
+        couponRepository.save(coupon);
+
         // 테스트용 계정 생성
         Account account = new Account(userId, 3_000_000L);
         accountRepo.save(account);
+
+
+        UserCoupon userCoupon = UserCoupon.builder()
+                .userId(userId)
+                .coupon(coupon)
+                .build();
+        userCouponRepository.save(userCoupon);
     }
 
     @Test
     void 주문_성공_통합테스트() throws Exception {
         Product product = productRepo.findAll().get(0);
+        Coupon coupon = couponRepository.findAll().get(0); // 생성된 쿠폰
+        UserCoupon userCoupon = userCouponRepository.findAll().get(0); // 발급된 쿠폰
 
         OrderRequest request = new OrderRequest(
                 userId,
-                null, // 쿠폰 없이 주문
+                coupon.getId(),
                 List.of(new OrderItem(product.getId(), 1)) // 상품 1개 주문
         );
 
@@ -79,11 +107,20 @@ class OrderIntegrationTest {
                 .andExpect(jsonPath("$.orderId").exists())
                 .andExpect(jsonPath("$.userId").value(userId))
                 .andExpect(jsonPath("$.totalAmount").value(product.getPrice()));
-//                .andExpect(jsonPath("$.orderedItems[0].productId").value(product.getId()));
 
         // 잔액 차감 검증
         Account updated = accountRepo.findById(userId).orElseThrow();
         assertThat(updated.getAmount()).isEqualTo(3_000_000L - product.getPrice());
+
+        /// 쿠폰 수량 감소 확인
+        Coupon updatedCoupon = couponRepository.findById(coupon.getId()).orElseThrow();
+        assertThat(updatedCoupon.getQuantity()).isEqualTo(0);
+
+
+        // 유저 쿠폰 사용 여부 확인
+        UserCoupon usedCoupon = userCouponRepository.findById(userCoupon.getId()).orElseThrow();
+        assertThat(usedCoupon.isUsed()).isTrue();
+
 
         // 주문 저장 검증
         assertThat(orderRepo.findAll()).hasSize(1);
@@ -152,6 +189,8 @@ class OrderIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict());
     }
+
+
 
 
 }
