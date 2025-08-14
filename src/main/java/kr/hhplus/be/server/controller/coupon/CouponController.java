@@ -1,14 +1,15 @@
-package kr.hhplus.be.server.domain.coupon;
+package kr.hhplus.be.server.controller.coupon;
 
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import kr.hhplus.be.server.domain.coupon.requeset.IssueCouponRequest;
-import kr.hhplus.be.server.domain.coupon.requeset.UseCouponRequest;
-import kr.hhplus.be.server.domain.coupon.response.IssueCouponResponse;
-import kr.hhplus.be.server.domain.coupon.response.OwnedCouponResponse;
-import kr.hhplus.be.server.domain.coupon.response.RegisteredCouponResponse;
-import kr.hhplus.be.server.domain.coupon.response.UseCouponResponse;
+import kr.hhplus.be.server.controller.coupon.request.IssueCouponRequest;
+import kr.hhplus.be.server.controller.coupon.request.UseCouponRequest;
+import kr.hhplus.be.server.controller.coupon.response.IssueCouponResponse;
+import kr.hhplus.be.server.controller.coupon.response.OwnedCouponResponse;
+import kr.hhplus.be.server.controller.coupon.response.RegisteredCouponResponse;
+import kr.hhplus.be.server.controller.coupon.response.UseCouponResponse;
+import kr.hhplus.be.server.service.coupon.CouponService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +27,7 @@ public class CouponController {
     @PostMapping("/issue")
     @Operation(summary = "쿠폰 발급",description = "쿠폰 발급 하는 API")
     public ResponseEntity<IssueCouponResponse> issueCoupon(@RequestBody IssueCouponRequest request) {
-        boolean result = couponService.issueCoupon(request.getMemberId(), request.getCouponId());
+        boolean result = couponService.issueCoupon(request.getUserId(), request.getCouponId());
         if(result) {
             return ResponseEntity.ok(new IssueCouponResponse(true, "쿠폰 발급 완료"));
         } else {
@@ -35,9 +36,9 @@ public class CouponController {
     }
 
     @PostMapping("/use")
-    @Operation(summary = "사용자 쿠폰 사용",description = "사용자 쿠폰 사용 하는 API")
+    @Operation(summary = "유저 쿠폰 사용",description = "유저 쿠폰 사용 하는 API")
     public ResponseEntity<UseCouponResponse> useCoupon(@RequestBody UseCouponRequest request) {
-        boolean result = couponService.useCoupon(request.getMemberId(), request.getCouponId());
+        boolean result = couponService.useCoupon(request.getUserId(), request.getCouponId());
         if (result) {
             return ResponseEntity.ok(new UseCouponResponse(true, "쿠폰 사용 완료"));
         } else {
@@ -45,10 +46,10 @@ public class CouponController {
         }
     }
 
-    @GetMapping("/owned/{memberId}")
-    @Operation(summary = "사용자 쿠폰 목록 조회",description = "사용자 쿠폰 목록 조회 하는 API")
-    public ResponseEntity<List<OwnedCouponResponse>> getOwnedCoupons(@PathVariable Long memberId) {
-        List<OwnedCouponResponse> ownedCoupons = couponService.getOwnedCoupons(memberId);
+    @GetMapping("/owned/{userId}")
+    @Operation(summary = "유저 쿠폰 목록 조회",description = "유저 쿠폰 목록 조회 하는 API")
+    public ResponseEntity<List<OwnedCouponResponse>> getOwnedCoupons(@PathVariable Long userId) {
+        List<OwnedCouponResponse> ownedCoupons = couponService.getOwnedCoupons(userId);
         return ResponseEntity.ok(ownedCoupons);
     }
 

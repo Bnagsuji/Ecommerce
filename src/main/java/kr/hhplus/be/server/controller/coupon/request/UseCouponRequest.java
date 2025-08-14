@@ -1,4 +1,4 @@
-package kr.hhplus.be.server.domain.coupon.requeset;
+package kr.hhplus.be.server.controller.coupon.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,6 +10,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UseCouponRequest {
-    private Long memberId;
+    private Long userId;
     private Long couponId;
 }
