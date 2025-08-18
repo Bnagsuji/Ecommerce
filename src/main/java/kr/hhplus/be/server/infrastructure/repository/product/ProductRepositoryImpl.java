@@ -58,9 +58,9 @@ public class ProductRepositoryImpl implements ProductRepository {
                 .fetch();
     }
 
-    @Override
-    public Optional<Product> findByIdForUpdate(Long id) {
-        return productJpaRepository.findByIdForUpdate(id);
-    }
+//    @Override
+//    public Optional<Product> findByIdForUpdate(Long id) {
+//        return productJpaRepository.findById(id);
+//    }
 
 }

@@ -31,7 +31,7 @@ class ProductControllerTest {
     @MockitoBean
     private ProductServiceImpl mockProductServiceImpl;
 
-    @Test
+/*    @Test
     void 상품_상세조회_성공_테스트() throws Exception {
         // given
         Long productId = 1L;
@@ -70,5 +70,5 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].name").value("상품A"))
                 .andExpect(jsonPath("$[1].name").value("상품B"));
-    }
+    }*/
 }

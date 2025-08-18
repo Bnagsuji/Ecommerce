@@ -14,10 +14,10 @@ public class CouponRepositoryImpl implements CouponRepository {
     private final CouponJpaRepository couponJpaRepository;
 
 
-    @Override
-    public Optional<Coupon> findByIdWithPessimisticLock(Long couponId) {
-        return couponJpaRepository.findByIdWithPessimisticLock(couponId);
-    }
+//    @Override
+//    public Optional<Coupon> findByIdWithPessimisticLock(Long couponId) {
+//        return couponJpaRepository.findByIdWithPessimisticLock(couponId);
+//    }
 
     @Override
     public Optional<Coupon> findById(Long couponId) {
@@ -32,5 +32,10 @@ public class CouponRepositoryImpl implements CouponRepository {
     @Override
     public Coupon save(Coupon coupon) {
         return couponJpaRepository.save(coupon);
+    }
+
+    @Override
+    public void deleteAll() {
+        couponJpaRepository.deleteAll();
     }
 }
