@@ -38,13 +38,6 @@ public class OrderItem {
     public OrderItem(Long productId, int quantity) {
     }
 
-//    public static OrderItem of(ProductResponse product, int quantity) {
-//        return OrderItem.builder()
-//                .productName(product.name())
-//                .price(product.price())
-//                .quantity(quantity)
-//                .build();
-//    }
 
     public static OrderItem of(OrderRequest.OrderItem request, ProductResponse product) {
         if (product.stock() < request.getQuantity()) {
