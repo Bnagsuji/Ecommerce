@@ -8,11 +8,13 @@ import kr.hhplus.be.server.controller.product.response.ProductResponse;
 import kr.hhplus.be.server.domain.order.Order;
 import kr.hhplus.be.server.domain.order.OrderItem;
 import kr.hhplus.be.server.domain.order.OrderRepository;
+import kr.hhplus.be.server.domain.order.external.CompleteMsg;
 import kr.hhplus.be.server.lock.DistributedLock;
 import kr.hhplus.be.server.service.account.AccountService;
 import kr.hhplus.be.server.service.coupon.CouponService;
 import kr.hhplus.be.server.service.product.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +31,8 @@ public class PlaceOrderUseCaseImpl implements PlaceOrderUseCase {
     private final AccountService accountService;
     private final CouponService couponService;
     private final OrderRepository orderRepository;
+
+    private final ApplicationEventPublisher publisher;
 
     @Override
     @DistributedLock(
@@ -51,12 +54,18 @@ public class PlaceOrderUseCaseImpl implements PlaceOrderUseCase {
             throw new IllegalArgumentException("주문할 상품이 없습니다.");
         }
 
+        //재고 차감
         List<ProductResponse> productResponses = handleStock(req.getItems());
         Map<Long, ProductResponse> productMap = ProductResponse.toMapById(productResponses);
+        //주문 목록 생성
         List<OrderItem> orderItems = createOrderItems(req, productMap);
+
+
+
         long totalAmount = Order.calculateTotalAmount(orderItems);
         long finalAmount = totalAmount;
 
+        //쿠폰 발급
         if (req.getCouponId() != null) {
             boolean issued = couponService.issueCoupon(req.getUserId(), req.getCouponId());
             if (!issued) {
@@ -71,10 +80,29 @@ public class PlaceOrderUseCaseImpl implements PlaceOrderUseCase {
             finalAmount = calculateFinalAmount(req.getUserId(), req.getCouponId(), totalAmount);
         }
 
+
+        //주문 정보 저장
         try {
             handlePayment(req.getUserId(), finalAmount);
             Order order = Order.create(req, orderItems);
             Order savedOrder = orderRepository.save(order);
+
+            List<CompleteMsg.Item> eventItems = savedOrder.getOrderItems().stream()
+                    .map(i -> new CompleteMsg.Item(i.getProductId(), i.getQuantity()))
+                    .toList();
+
+            CompleteMsg msg = CompleteMsg.builder()
+                            .orderId(order.getId())
+                            .userId(order.getUserId())
+                            .items(eventItems)
+                            .createDate(order.getOrderDate())
+                            .build();
+
+
+
+            publisher.publishEvent(msg);
+
+
             return OrderResponse.from(savedOrder);
         } catch (Exception e) {
             rollbackCouponIfNecessary(req.getUserId(), req.getCouponId());
