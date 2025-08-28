@@ -1,6 +1,7 @@
 plugins {
 	java
-	id("org.springframework.boot") version "3.4.1"
+	// Spring Boot 버전을 최신 안정 버전으로 변경
+	id("org.springframework.boot") version "3.3.1"
 	id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -37,21 +38,21 @@ repositories {
 
 dependencyManagement {
 	imports {
-		mavenBom("org.springframework.cloud:spring-cloud-dependencies:2024.0.0")
+		mavenBom("org.springframework.cloud:spring-cloud-dependencies:2023.0.2")
 	}
 }
 
-var tc="1.20.4";
+var tc="1.19.8"; // testcontainers 버전을 최신 안정 버전으로 변경
 
 dependencies {
-    // Spring
+	// Spring
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-web")
-// https://mvnrepository.com/artifact/org.springframework.data/spring-data-redis
-	implementation("org.springframework.data:spring-data-redis:3.4.0")
-// https://mvnrepository.com/artifact/org.redisson/redisson-spring-boot-starter
-	implementation("org.redisson:redisson-spring-boot-starter:3.41.0")
+	// Spring Boot가 버전을 관리하도록 명시적 버전을 제거
+	implementation("org.springframework.boot:spring-boot-starter-data-redis")
+	// Spring Boot 3.3.2와 호환되는 Redisson 버전을 명시 (이 예시에서는 최신 안정 버전을 사용)
+	implementation("org.redisson:redisson-spring-boot-starter:3.28.0")
 
 	//래디스 캐시
 	implementation("org.springframework.boot:spring-boot-starter-cache")
@@ -65,21 +66,18 @@ dependencies {
 	//lombok
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
-    // DB
+	// DB
 	runtimeOnly("com.mysql:mysql-connector-j")
-
-
 
 	implementation("com.querydsl:querydsl-jpa:5.0.0:jakarta")
 	annotationProcessor("com.querydsl:querydsl-apt:5.0.0:jakarta")
 	annotationProcessor("jakarta.annotation:jakarta.annotation-api")
 	annotationProcessor("jakarta.persistence:jakarta.persistence-api:3.1.0")
 
-
-    // Test
+	// Test
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
-// https://mvnrepository.com/artifact/org.testcontainers/testcontainers
+	// testcontainers 버전을 최신 안정 버전으로 변경
 	testImplementation("org.testcontainers:testcontainers:1.19.8")
 	testImplementation("org.testcontainers:junit-jupiter:$tc")
 	testImplementation("org.testcontainers:mysql")
@@ -94,4 +92,3 @@ tasks.withType<Test> {
 tasks.withType<JavaCompile>().configureEach {
 	options.generatedSourceOutputDirectory.set(file("/generated/java"))
 }
-

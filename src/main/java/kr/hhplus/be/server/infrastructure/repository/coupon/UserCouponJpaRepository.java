@@ -16,7 +16,7 @@ public interface UserCouponJpaRepository extends JpaRepository<UserCoupon, Long>
     @Query("SELECT uc FROM UserCoupon uc WHERE uc.userId = :userId AND uc.coupon.id = :couponId")
     Optional<UserCoupon> findByUserIdAndCouponIdWithLock(@Param("userId") Long userId, @Param("couponId") Long couponId);
 
-    // 이 메서드는 Lock 걸지 않고 exists 여부만 조회함
+    //멱등체크
     boolean existsByUserIdAndCoupon_Id(Long userId, Long couponId);
 
     Optional<UserCoupon> findByUserIdAndCoupon_Id(Long userId, Long couponId);
