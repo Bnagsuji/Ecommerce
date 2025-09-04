@@ -61,6 +61,12 @@ dependencies {
 	implementation("org.mapstruct:mapstruct-processor:1.4.2.Final")
 	implementation ("org.mapstruct:mapstruct:1.4.2.Final")
 
+	//카프카
+	// https://mvnrepository.com/artifact/org.springframework.kafka/spring-kafka
+	implementation("org.springframework.kafka:spring-kafka:3.3.4")
+	// https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients
+	implementation("org.apache.kafka:kafka-clients:3.9.1")
+
 	//swagger
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
 	//lombok
@@ -82,6 +88,7 @@ dependencies {
 	testImplementation("org.testcontainers:junit-jupiter:$tc")
 	testImplementation("org.testcontainers:mysql")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	testImplementation ("org.testcontainers:kafka:1.19.8")
 }
 
 tasks.withType<Test> {

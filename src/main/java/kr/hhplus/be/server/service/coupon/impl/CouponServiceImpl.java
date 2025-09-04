@@ -1,21 +1,30 @@
 package kr.hhplus.be.server.service.coupon.impl;
 
+import kr.hhplus.be.server.config.kafka.KafkaProducerConfig;
 import kr.hhplus.be.server.controller.coupon.response.OwnedCouponResponse;
 import kr.hhplus.be.server.controller.coupon.response.RegisteredCouponResponse;
 import kr.hhplus.be.server.domain.coupon.Coupon;
 import kr.hhplus.be.server.domain.coupon.UserCoupon;
+import kr.hhplus.be.server.infrastructure.messaging.kafka.coupon.KafkaCouponIssueDTO;
 import kr.hhplus.be.server.infrastructure.repository.coupon.CouponJpaRepository;
 import kr.hhplus.be.server.infrastructure.repository.coupon.UserCouponJpaRepository;
 import kr.hhplus.be.server.lock.DistributedLock;
 import kr.hhplus.be.server.service.coupon.CouponService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CouponServiceImpl implements CouponService {
@@ -23,7 +32,11 @@ public class CouponServiceImpl implements CouponService {
     private final CouponJpaRepository couponRepository;
     private final UserCouponJpaRepository userCouponRepository;
 
-    @Override
+    @Qualifier("couponIssueKafkaTemplate")
+    private final KafkaTemplate<Long, KafkaCouponIssueDTO> couponIssueTemplate;
+
+    /* 분산락 사용 쿠폰 발급 */
+/*    @Override
     @DistributedLock(
             keys = {
                     "'user:' + #userId",
@@ -59,6 +72,31 @@ public class CouponServiceImpl implements CouponService {
             rollback(userId, couponId);
             return false;
         }
+
+        return true;
+    }*/
+
+    /** 카프카 사용 선착순 쿠폰 발급 */
+    @Override
+    public boolean issueCoupon(Long userId, Long couponId) {
+        KafkaCouponIssueDTO payload = new KafkaCouponIssueDTO(
+                userId,
+                couponId,
+                System.currentTimeMillis()
+        );
+
+        CompletableFuture<SendResult<Long, KafkaCouponIssueDTO>> future =
+                couponIssueTemplate.send(KafkaProducerConfig.COUPON_REQ_TOPIC, couponId, payload);
+
+        future.whenComplete((SendResult<Long, KafkaCouponIssueDTO> result, Throwable ex) -> {
+            if (ex == null) {
+                RecordMetadata meta = result.getRecordMetadata();
+                log.info("[coupon-issue] published: user={} coupon={} meta=topic:{} partition:{} offset:{}",
+                        userId, couponId, meta.topic(), meta.partition(), meta.offset());
+            } else {
+                log.error("[coupon-issue] publish failed: user={} coupon={}", userId, couponId, ex);
+            }
+        });
 
         return true;
     }

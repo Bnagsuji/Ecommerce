@@ -8,6 +8,7 @@ import kr.hhplus.be.server.controller.product.response.ProductResponse;
 import kr.hhplus.be.server.domain.order.Order;
 import kr.hhplus.be.server.domain.order.OrderItem;
 import kr.hhplus.be.server.domain.order.OrderRepository;
+import kr.hhplus.be.server.domain.order.event.OrderCompletedEvent;
 import kr.hhplus.be.server.domain.order.external.CompleteMsg;
 import kr.hhplus.be.server.lock.DistributedLock;
 import kr.hhplus.be.server.service.account.AccountService;
@@ -31,15 +32,14 @@ public class PlaceOrderUseCaseImpl implements PlaceOrderUseCase {
     private final AccountService accountService;
     private final CouponService couponService;
     private final OrderRepository orderRepository;
-
     private final ApplicationEventPublisher publisher;
 
     @Override
     @DistributedLock(
             keys = {
-                    "#req.items.![ 'product:' + productId ]",    // 상품별 멀티락
+                    "#req.items.![ 'product:' + productId ]",           // 상품별 멀티락
                     "'account:' + #req.userId",
-                    "#req.couponId != null ? 'coupon:' + #req.couponId : null"  // 쿠폰 optional 락
+                    "#req.couponId != null ? 'coupon:' + #req.userId + ':' + #req.couponId : null"
             },
             prefix = "lock:",
             lease = 5,
@@ -54,60 +54,53 @@ public class PlaceOrderUseCaseImpl implements PlaceOrderUseCase {
             throw new IllegalArgumentException("주문할 상품이 없습니다.");
         }
 
-        //재고 차감
+        // 재고 차감
         List<ProductResponse> productResponses = handleStock(req.getItems());
         Map<Long, ProductResponse> productMap = ProductResponse.toMapById(productResponses);
-        //주문 목록 생성
+
+        // 주문 목록 생성
         List<OrderItem> orderItems = createOrderItems(req, productMap);
 
-
-
+        // 총액/할인 계산 (주문 시점엔 '이미 발급된 쿠폰'만 사용)
         long totalAmount = Order.calculateTotalAmount(orderItems);
-        long finalAmount = totalAmount;
-
-        //쿠폰 발급
+        int discountAmount = 0;
         if (req.getCouponId() != null) {
-            boolean issued = couponService.issueCoupon(req.getUserId(), req.getCouponId());
-            if (!issued) {
-                throw new IllegalStateException("쿠폰 발급에 실패했습니다.");
+            discountAmount = couponService.applyCoupon(req.getUserId(), req.getCouponId());
+            if (discountAmount <= 0) {
+                throw new IllegalStateException("유효하지 않거나 미발급된 쿠폰입니다.");
             }
+        }
+        long finalAmount = Math.max(totalAmount - discountAmount, 0);
 
+        // 결제 → 주문 저장 → 쿠폰 사용(있으면) : 같은 트랜잭션에서 처리
+        handlePayment(req.getUserId(), finalAmount);
+
+        Order order = Order.create(req, orderItems);
+        Order savedOrder = orderRepository.save(order);
+
+        if (req.getCouponId() != null) {
             boolean used = couponService.useCoupon(req.getUserId(), req.getCouponId());
             if (!used) {
+                // 동시성 등으로 사용 실패 시 전체 롤백
                 throw new IllegalStateException("쿠폰 사용에 실패했습니다.");
             }
-
-            finalAmount = calculateFinalAmount(req.getUserId(), req.getCouponId(), totalAmount);
         }
 
+        // 커밋 후 발행될 도메인 이벤트 (AFTER_COMMIT 리스너가 Kafka로 전송)
+        List<CompleteMsg.Item> eventItems = savedOrder.getOrderItems().stream()
+                .map(i -> new CompleteMsg.Item(i.getProductId(), i.getQuantity()))
+                .toList();
 
-        //주문 정보 저장
-        try {
-            handlePayment(req.getUserId(), finalAmount);
-            Order order = Order.create(req, orderItems);
-            Order savedOrder = orderRepository.save(order);
+        CompleteMsg msg = CompleteMsg.builder()
+                .orderId(savedOrder.getId())
+                .userId(savedOrder.getUserId())
+                .items(eventItems)
+                .createDate(savedOrder.getOrderDate())
+                .build();
 
-            List<CompleteMsg.Item> eventItems = savedOrder.getOrderItems().stream()
-                    .map(i -> new CompleteMsg.Item(i.getProductId(), i.getQuantity()))
-                    .toList();
+        publisher.publishEvent(new OrderCompletedEvent(msg, String.valueOf(req.getUserId())));
 
-            CompleteMsg msg = CompleteMsg.builder()
-                            .orderId(order.getId())
-                            .userId(order.getUserId())
-                            .items(eventItems)
-                            .createDate(order.getOrderDate())
-                            .build();
-
-
-
-            publisher.publishEvent(msg);
-
-
-            return OrderResponse.from(savedOrder);
-        } catch (Exception e) {
-            rollbackCouponIfNecessary(req.getUserId(), req.getCouponId());
-            throw e;
-        }
+        return OrderResponse.from(savedOrder);
     }
 
     private List<ProductResponse> handleStock(List<OrderRequest.OrderItem> items) {
@@ -132,21 +125,10 @@ public class PlaceOrderUseCaseImpl implements PlaceOrderUseCase {
                 .toList();
     }
 
-    private long calculateFinalAmount(Long userId, Long couponId, long totalAmount) {
-        if (couponId == null) return totalAmount;
-        int discountAmount = couponService.applyCoupon(userId, couponId);
-        return Math.max(totalAmount - discountAmount, 0);
-    }
-
     private void handlePayment(Long userId, long totalAmount) {
         AccountResponse response = accountService.useBalance(userId, totalAmount);
         if (response.amount() < 100L) {
             throw new IllegalStateException("잔액이 부족합니다.");
         }
-    }
-
-    private void rollbackCouponIfNecessary(Long userId, Long couponId) {
-        if (couponId == null) return;
-        couponService.rollback(userId, couponId);
     }
 }
