@@ -1,7 +1,7 @@
 package kr.hhplus.be.server.service.external;
 
-import kr.hhplus.be.server.domain.order.Order;
+import kr.hhplus.be.server.domain.order.external.CompleteMsg;
 
 public interface ExternalPlatformService {
-    void sendOrderCompletionData(Order order);
+    void sendOrderCompletionData(CompleteMsg msg);
 }
