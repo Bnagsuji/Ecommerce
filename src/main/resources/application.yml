@@ -45,7 +45,7 @@ spring:
       connection-timeout: 30000
     url: jdbc:mysql://localhost:3305/hhplus?characterEncoding=UTF-8&serverTimezone=UTC
     username: root
-    password: 1234
+    password: root
 
   data:
     redis:
@@ -60,9 +60,34 @@ spring:
       nettyThreads: 8
       lockWatchdogTimeout: 30000
       codec: !<org.redisson.codec.JsonJacksonCodec> {}    
+      
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      acks: all
+      retries: 3
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+    consumer:
+      group-id: ecommerce-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+
+
 logging:
   level:
     org.springframework.cache: TRACE
+
+
+
+
+
 
 
   # === Redisson 설정 추가 ===
