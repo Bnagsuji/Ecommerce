@@ -37,71 +37,80 @@ public class DistributedLockAspect {
     private final SpelExpressionParser parser = new SpelExpressionParser();
 
     @Around("@annotation(kr.hhplus.be.server.lock.DistributedLock)")
-    public Object lock(ProceedingJoinPoint joinPoint) throws Throwable {
-        Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
-        DistributedLock annotation = method.getAnnotation(DistributedLock.class);
+    public Object lock(ProceedingJoinPoint pjp) throws Throwable {
+        Method method = ((MethodSignature) pjp.getSignature()).getMethod();
+        DistributedLock ann = method.getAnnotation(DistributedLock.class);
 
-        List<String> resolvedKeys = resolveKeys(joinPoint, annotation);
+        List<String> keys = resolveKeys(pjp, ann);
+        if (keys.isEmpty()) throw new IllegalStateException("분산락 키가 없습니다.");
 
-        if (resolvedKeys.isEmpty()) {
-            throw new IllegalStateException("분산락 키가 없습니다.");
-        }
-
-        List<RLock> locks = resolvedKeys.stream()
-                .map(key -> redissonClient.getLock(key))
-                .toList();
-
+        List<RLock> locks = keys.stream().map(redissonClient::getLock).toList();
         RedissonMultiLock multiLock = new RedissonMultiLock(locks.toArray(new RLock[0]));
 
-        Duration waitTime = Duration.of(annotation.waitFor(), annotation.waitUnit());
-        Duration leaseTime = Duration.of(annotation.lease(), annotation.unit());
+        Duration wait = Duration.of(ann.waitFor(), ann.waitUnit());
+        Duration lease = Duration.of(ann.lease(), ann.unit());
 
-        boolean locked = multiLock.tryLock(
-                waitTime.toMillis(),
-                leaseTime.isZero() ? -1 : leaseTime.toMillis(),
+        boolean acquired = multiLock.tryLock(
+                wait.toMillis(),
+                lease.isZero() ? -1 : lease.toMillis(), // 0이면 watchdog(-1)로 유지
                 TimeUnit.MILLISECONDS
         );
+        if (!acquired) throw new IllegalStateException("LOCK_TIMEOUT: " + keys);
 
-        if (!locked) {
-            throw new IllegalStateException("LOCK_TIMEOUT: " + resolvedKeys);
-        }
+        log.debug("LOCK ACQUIRED: {}", keys);
 
-        try {
-            log.debug("LOCK ACQUIRED: {}", resolvedKeys);
-            return joinPoint.proceed();
-        } finally {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCompletion(int status) {
-                    if (multiLock.isHeldByCurrentThread()) {
-                        try {
-                            multiLock.unlock();
-                            log.debug("LOCK RELEASED: {}", resolvedKeys);
-                        } catch (Exception e) {
-                            log.error("UNLOCK FAILED: {}", e.getMessage());
-                        }
+        boolean willUnlockByTx = false;
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            try {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        safeUnlock(multiLock, keys, "afterCompletion");
                     }
-                }
-            });
-        }
-    }
-
-    private List<String> resolveKeys(ProceedingJoinPoint joinPoint, DistributedLock annotation) {
-        String[] expressions = annotation.keys();
-        if (expressions.length == 0) return List.of();
-
-        EvaluationContext context = new StandardEvaluationContext();
-        Object[] args = joinPoint.getArgs();
-        String[] paramNames = ((MethodSignature) joinPoint.getSignature()).getParameterNames();
-        if (paramNames != null) {
-            for (int i = 0; i < paramNames.length; i++) {
-                context.setVariable(paramNames[i], args[i]);
+                });
+                willUnlockByTx = true;
+            } catch (IllegalStateException e) {
+                log.warn("Tx sync registration failed, fallback to finally unlock. msg={}", e.getMessage());
             }
         }
 
-        return Arrays.stream(expressions)
-                .map(expr -> annotation.prefix() + ":" + parser.parseExpression(expr).getValue(context, String.class))
+        try {
+            return pjp.proceed();
+        } finally {
+            if (!willUnlockByTx) {
+                safeUnlock(multiLock, keys, "finally");
+            }
+        }
+    }
+
+    private void safeUnlock(RedissonMultiLock multiLock, List<String> keys, String where) {
+        try {
+            if (multiLock.isHeldByCurrentThread()) {
+                multiLock.unlock();
+                log.debug("LOCK RELEASED({}): {}", where, keys);
+            }
+        } catch (Exception e) {
+            log.error("UNLOCK FAILED({}): {} - {}", where, keys, e.getMessage(), e);
+        }
+    }
+
+    private List<String> resolveKeys(ProceedingJoinPoint pjp, DistributedLock ann) {
+        String[] exprs = ann.keys();
+        if (exprs.length == 0) return List.of();
+
+        EvaluationContext ctx = new StandardEvaluationContext();
+        Object[] args = pjp.getArgs();
+        String[] paramNames = ((MethodSignature) pjp.getSignature()).getParameterNames();
+        if (paramNames != null) {
+            for (int i = 0; i < paramNames.length; i++) {
+                ctx.setVariable(paramNames[i], args[i]);
+            }
+        }
+
+        return Arrays.stream(exprs)
+                .map(e -> parser.parseExpression(e).getValue(ctx, String.class))
                 .filter(Objects::nonNull)
+                .map(val -> ann.prefix() + ":" + val)
                 .toList();
     }
 }
