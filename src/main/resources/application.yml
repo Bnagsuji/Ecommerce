@@ -8,8 +8,11 @@ spring:
     type: com.zaxxer.hikari.HikariDataSource
     hikari:
       maximum-pool-size: 50
-      connection-timeout: 10000
+      connection-timeout: 2000
       max-lifetime: 60000
+    url: jdbc:mysql://localhost:3305/hhplus?characterEncoding=UTF-8&serverTimezone=UTC
+    username: root
+    password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     open-in-view: false
@@ -20,7 +23,42 @@ spring:
     properties:
       hibernate.timezone.default_storage: NORMALIZE_UTC
       hibernate.jdbc.time_zone: UTC
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  redisson:
+    config: |
+      singleServerConfig:
+        address: "redis://${spring.data.redis.host}:${spring.data.redis.port}"
+      threads: 4
+      nettyThreads: 8
+      lockWatchdogTimeout: 30000
+      codec: !<org.redisson.codec.JsonJacksonCodec> {}
+  kafka:
+    bootstrap-servers: localhost:29092
+    producer:
+      acks: all
+      retries: 3
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+    consumer:
+      group-id: ecommerce-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
+
+server:
+  tomcat:
+    threads:
+      max: 400           # 기본 ~200, 쓰기 많은 환경이면 늘리기
+      min-spare: 50
+    max-connections: 10000  # 커넥션 레벨 수용량
+    accept-count: 2000      # 대기열(백로그) – 연결 폭주 대비
 ---
 
 springdoc:
@@ -39,46 +77,58 @@ spring.config.activate.on-profile: local, test
 spring:
   datasource:
     hikari:
-      maximum-pool-size: 30
+      maximum-pool-size: 80
       minimum-idle: 10
       idle-timeout: 30000
       connection-timeout: 30000
+      validation-timeout: 1000
+      leak-detection-threshold: 0
     url: jdbc:mysql://localhost:3305/hhplus?characterEncoding=UTF-8&serverTimezone=UTC
     username: root
     password: root
 
-  data:
-    redis:
-      host: localhost
-      port: 6379
+#  data:
+#    redis:
+#      host: localhost
+#      port: 6379
+#
+#  redisson:
+#    config: |
+#      singleServerConfig:
+#        address: "redis://${spring.data.redis.host}:${spring.data.redis.port}"
+#      threads: 4
+#      nettyThreads: 8
+#      lockWatchdogTimeout: 30000
+#      codec: !<org.redisson.codec.JsonJacksonCodec> {}
+#
+#
+#  kafka:
+#    bootstrap-servers: localhost:29092
+#    producer:
+#      acks: all
+#      retries: 3
+#      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+#      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+#      properties:
+#        enable.idempotence: true
+#        max.in.flight.requests.per.connection: 5
+#    consumer:
+#      group-id: ecommerce-group
+#      auto-offset-reset: earliest
+#      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+#      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
-  redisson:
-    config: |
-      singleServerConfig:
-        address: "redis://${spring.data.redis.host}:${spring.data.redis.port}"
-      threads: 4
-      nettyThreads: 8
-      lockWatchdogTimeout: 30000
-      codec: !<org.redisson.codec.JsonJacksonCodec> {}    
-      
-
-  kafka:
-    bootstrap-servers: localhost:9092
-    producer:
-      acks: all
-      retries: 3
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
-      properties:
-        enable.idempotence: true
-        max.in.flight.requests.per.connection: 5
-    consumer:
-      group-id: ecommerce-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-
-
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  metrics:
+    enable:
+      all: true
 
 logging:
   level:
