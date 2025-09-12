@@ -8,25 +8,28 @@ import kr.hhplus.be.server.domain.account.AccountRepository;
 import kr.hhplus.be.server.infrastructure.repository.account.AccountHistoryRepository;
 import kr.hhplus.be.server.lock.DistributedLock;
 import kr.hhplus.be.server.service.account.AccountService;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.function.Consumer;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class AccountServiceImpl implements AccountService {
+
     private final AccountRepository accountRepository;
     private final AccountHistoryRepository accountHistoryRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public AccountResponse getBalance(Long userId) {
         Account account = accountRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+                .orElseGet(() -> Account.createNew(userId)); // 0원 가정 (또는 save로 실제 생성)
         return new AccountResponse(account.getUserId(), account.getAmount());
     }
 
@@ -68,14 +71,19 @@ public class AccountServiceImpl implements AccountService {
                 .toList();
     }
 
-    private AccountResponse processBalanceWithLock(Long userId, Long amount, TransactionType type, Consumer<Account> action) {
-        Account account = accountRepository.findByUserId(userId)
-                .orElseGet(() -> {
-                    Account newAccount = Account.createNew(userId);
-                    return accountRepository.save(newAccount);
-                });
+    private AccountResponse processBalanceWithLock(
+            Long userId, Long amount, TransactionType type, Consumer<Account> action) {
+
+        Account account = accountRepository.findByUserIdForUpdate(userId)
+                .orElseGet(() -> accountRepository.save(Account.createNew(userId)));
 
         action.accept(account);
+
+        accountHistoryRepository.save(
+                kr.hhplus.be.server.domain.account.AccountHistory.create(
+                        userId, amount, type, LocalDateTime.now()
+                )
+        );
 
         return new AccountResponse(account.getUserId(), account.getAmount());
     }
